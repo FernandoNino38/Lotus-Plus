@@ -1,9 +1,9 @@
 <div align="center">
   <img src="fastlane/metadata/android/en-US/images/icon-fit.png" width="200px" />
 
-  # Lotus
+  # Lotus+
 
-  ### Music player for Android
+  ### Music player for Android and Windows
   
 </div>
 
@@ -11,37 +11,54 @@
 
 <div align="center">
   <div>
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="24%" />
+    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpg" width="24%" />
+    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpg" width="24%" />
     <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="24%" />
-    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="24%" />
+    <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpg" width="24%" />
   </div>
 </div>
 
+## Tablet Support
+
+<div align="center">
+  <div>
+    <img src="fastlane/metadata/android/en-US/images/tenInchScreenshots/1.jpg" width="49%" />
+    <img src="fastlane/metadata/android/en-US/images/tenInchScreenshots/2.jpg" width="49%" />
+    <img src="fastlane/metadata/android/en-US/images/tenInchScreenshots/3.png" width="49%" />
+    <img src="fastlane/metadata/android/en-US/images/tenInchScreenshots/4.png" width="49%" />
+  </div>
+</div>
+
+- Adaptive navigation rail with quick access to search, library tabs, and settings
+- Persistent side player with expandable synchronized lyrics, compact top track header, and bottom playback controls
+- Fullscreen lyrics view optimized for landscape and large screens
+- Two-pane settings layout for faster navigation on tablets
+
 ## Features
 - Enjoy your favorite music in a variety of formats, including MP3, FLAC, OGG, WAV, and more
-- Easily browse tracks, albums, artists, and genres, and create custom playlists
-- Enhance your listening experience with synchronized lyrics from [LRCLIB](https://lrclib.net/)
+- Easily browse tracks, albums, artists, genres, and folders, and create custom playlists
+- Dynamic playlists for recently added and most played tracks
+- Audio quality badge and detailed format, sample rate, and bitrate information
+- Enhance your listening experience with smooth synchronized lyrics from [LRCLIB](https://lrclib.net/) and fullscreen lyrics mode
+- Synchronized lyrics support for Android Auto
+- Share single or multiple tracks directly from the player or library
 - Manually update track details or fetch accurate info from [MusicBrainz](https://musicbrainz.org/)
 - Designed with [Material You](https://m3.material.io/) and supports dynamic color palettes
+- Companion Windows desktop app available under `windows/Lotus.Windows`
 
 ## Download
-Latest stable version is available on [GitHub releases](https://github.com/dn0ne/lotus/releases/latest)
+Latest releases are available on [GitHub releases](https://github.com/FernandoNino38/lotus/releases/latest)
 
-Stable releases are also available on [F-Droid](https://f-droid.org/packages/com.dn0ne.lotus)
+Upstream Lotus is also available on [dn0ne/lotus](https://github.com/dn0ne/lotus) and [F-Droid](https://f-droid.org/packages/com.dn0ne.lotus)
 
 ## Support
-If you enjoy using Lotus, consider [buying me a coffee](https://en.liberapay.com/dn0ne/donate)!
+If you enjoy using Lotus, consider supporting the original author: [buying me a coffee](https://en.liberapay.com/dn0ne/donate)
 
 ## Build
 1. **Get the Source Code**  
    - Clone the repository or download the source code:
      ```bash
-     git clone https://github.com/dn0ne/lotus.git
+     git clone https://github.com/FernandoNino38/lotus.git
      ```
 
 2. **Open project in Android Studio**  
@@ -70,4 +87,4 @@ Lyrics UI is inspired by [Beautiful Lyrics](https://github.com/surfbryce/beautif
 [jaudiotagger](https://bitbucket.org/ijabz/jaudiotagger/src/master/)
 
 ## License
-Lotus is licensed under [GPLv3](LICENSE.md)
+Lotus+ is licensed under [GPLv3](LICENSE.md)
