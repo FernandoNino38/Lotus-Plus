@@ -47,18 +47,18 @@
 - Companion Windows desktop app available under `windows/Lotus.Windows`
 
 ## Download
-Latest releases are available on [GitHub releases](https://github.com/FernandoNino38/lotus/releases/latest)
+Latest releases are available on [GitHub releases](https://github.com/FernandoNino38/Lotus-Plus/releases/latest)
 
 Upstream Lotus is also available on [dn0ne/lotus](https://github.com/dn0ne/lotus) and [F-Droid](https://f-droid.org/packages/com.dn0ne.lotus)
 
 ## Support
-If you enjoy using Lotus, consider supporting the original author: [buying me a coffee](https://en.liberapay.com/dn0ne/donate)
+If you enjoy using Lotus+, consider supporting the original author by [buying him a coffee](https://en.liberapay.com/dn0ne/donate)
 
 ## Build
 1. **Get the Source Code**  
    - Clone the repository or download the source code:
      ```bash
-     git clone https://github.com/FernandoNino38/lotus.git
+     git clone https://github.com/FernandoNino38/Lotus-Plus.git
      ```
 
 2. **Open project in Android Studio**  
