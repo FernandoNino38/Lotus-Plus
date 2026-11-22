@@ -1,0 +1,1884 @@
+<Window x:Class="Lotus.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:Lotus.Windows.Controls"
+        mc:Ignorable="d"
+        Title="Lotus — Music Player"
+        Icon="pack://application:,,,/Assets/icon.png"
+        Width="1320"
+        Height="850"
+        MinWidth="960"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}"
+        Foreground="{DynamicResource OnSurfaceBrush}"
+        FontFamily="Segoe UI Variable Display, Segoe UI"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="42"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="1"
+                      CornerRadius="16"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Border BorderBrush="{DynamicResource OutlineVariantBrush}"
+            BorderThickness="1"
+            Background="{DynamicResource BackgroundBrush}">
+        <Grid>
+            <!-- Ambient Dynamic Album Art Glow Backdrop -->
+            <Rectangle Fill="{DynamicResource AmbientGlowBrush}" IsHitTestVisible="False" />
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="44" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- ==================== 0. CUSTOM SLEEK WINDOW TITLEBAR ==================== -->
+                <Grid Grid.Row="0" Background="Transparent" Margin="16,0,10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- App Brand Pill in Titlebar -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="24" Height="24" CornerRadius="7" ClipToBounds="True"
+                                Background="{DynamicResource PrimaryContainerBrush}" Margin="0,0,10,0">
+                            <Image Source="pack://application:,,,/Assets/icon.png" Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock Text="Lotus" FontWeight="Bold" FontSize="14"
+                                   Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Music Player" FontSize="12.5" Opacity="0.65"
+                                   Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                   VerticalAlignment="Center" Margin="6,1,0,0" />
+                    </StackPanel>
+
+                    <!-- Center Mini Status Pill -->
+                    <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="{DynamicResource SurfaceContainerLowBrush}"
+                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                            BorderThickness="1"
+                            CornerRadius="13" Padding="14,4"
+                            Visibility="{Binding HasCurrentTrack, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="{DynamicResource PrimaryBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding CurrentTrack.DisplayTitle}" FontWeight="SemiBold" FontSize="11.5"
+                                       Foreground="{DynamicResource OnSurfaceBrush}" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text=" — " FontSize="11.5" Foreground="{DynamicResource OnSurfaceVariantBrush}" />
+                            <TextBlock Text="{Binding CurrentTrack.DisplayArtist}" FontSize="11.5"
+                                       Foreground="{DynamicResource OnSurfaceVariantBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right Window Controls -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource TitleBarButtonStyle}"
+                                Click="MinimizeWindow_Click" ToolTip="Minimizar">
+                            <Path Data="{StaticResource IconMinimize}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Width="12" Height="12" Stretch="Uniform" />
+                        </Button>
+                        <Button Style="{StaticResource TitleBarButtonStyle}"
+                                Click="MaximizeRestoreWindow_Click" ToolTip="Maximizar / Restaurar" Margin="2,0">
+                            <Path Data="{StaticResource IconMaximize}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Width="12" Height="12" Stretch="Uniform" />
+                        </Button>
+                        <Button Style="{StaticResource TitleBarCloseButtonStyle}"
+                                Click="CloseWindow_Click" ToolTip="Fechar">
+                            <Path Data="{StaticResource IconClose}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Width="12" Height="12" Stretch="Uniform" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ==================== 1. MAIN WORKSPACE (SIDEBAR + CONTENT + RIGHT PANELS) ==================== -->
+                <Grid Grid.Row="1" Margin="12,0,12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="244" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- LEFT FLOATING NAVIGATION CARD -->
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource SurfaceContainerLowBrush}"
+                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                            BorderThickness="1"
+                            CornerRadius="24"
+                            Padding="14,18">
+                        <DockPanel LastChildFill="True">
+                            <!-- Library Summary Header -->
+                            <Border DockPanel.Dock="Top"
+                                    Background="{DynamicResource SurfaceContainerBrush}"
+                                    CornerRadius="18" Padding="14,12" Margin="0,0,0,18">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="42" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="12" ClipToBounds="True"
+                                            Background="{DynamicResource PrimaryContainerBrush}">
+                                        <Image Source="pack://application:,,,/Assets/icon.png" Stretch="UniformToFill" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,0,0">
+                                        <TextBlock Text="Sua Biblioteca" FontSize="14.5" FontWeight="Bold"
+                                                   Foreground="{DynamicResource OnSurfaceBrush}" />
+                                        <TextBlock Text="{Binding TotalTracksCount, StringFormat='{}{0} faixas indexadas'}"
+                                                   FontSize="11.5"
+                                                   Foreground="{DynamicResource PrimaryBrush}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Bottom Quick Actions -->
+                            <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                                <Border Height="1" Background="{DynamicResource OutlineVariantBrush}" Margin="6,0,6,14" Opacity="0.6" />
+
+                                <Button Style="{StaticResource TonalButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Margin="0,0,0,8"
+                                        Click="OpenAudioFiles_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconMusicNote}" Fill="{DynamicResource PrimaryBrush}"
+                                              Width="15" Height="15" Stretch="Uniform" Margin="0,0,10,0" />
+                                        <TextBlock Text="Abrir Arquivos..." />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource TonalButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Margin="0,0,0,8"
+                                        Click="AddScanFolder_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource PrimaryBrush}"
+                                              Width="15" Height="15" Stretch="Uniform" Margin="0,0,10,0" />
+                                        <TextBlock Text="Adicionar Pasta..." />
+                                    </StackPanel>
+                                </Button>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource TonalButtonStyle}"
+                                            Click="RescanLibrary_Click" ToolTip="Reescanear pastas de música">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource OnSurfaceBrush}"
+                                                  Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" />
+                                            <TextBlock Text="Escanear" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="2" Style="{StaticResource TonalButtonStyle}"
+                                            Click="OpenSettings_Click" ToolTip="Configurações do Lotus">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconSettings}" Fill="{DynamicResource OnSurfaceBrush}"
+                                                  Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" />
+                                            <TextBlock Text="Ajustes" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Navigation Tabs -->
+                            <StackPanel>
+                                <TextBlock Text="NAVEGAÇÃO" FontSize="10.5" FontWeight="Bold"
+                                           Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                           Margin="12,0,0,8" Opacity="0.7" />
+
+                                <Button x:Name="NavTracksBtn" Style="{StaticResource ActiveNavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Tracks">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconMusicNote}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Faixas" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="NavPlaylistsBtn" Style="{StaticResource NavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Playlists">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconPlaylists}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Playlists" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="NavAlbumsBtn" Style="{StaticResource NavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Albums">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconAlbum}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Álbuns" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="NavArtistsBtn" Style="{StaticResource NavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Artists">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconArtist}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Artistas" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="NavGenresBtn" Style="{StaticResource NavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Genres">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconGenre}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Gêneros" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="NavFoldersBtn" Style="{StaticResource NavButtonStyle}"
+                                        Margin="0,0,0,4" Click="NavTab_Click" Tag="Folders">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource IconFolder}"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Width="17" Height="17" Stretch="Uniform" Margin="0,0,14,0" />
+                                        <TextBlock Text="Pastas" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Scan Progress Indicator Card -->
+                                <Border Background="{DynamicResource SurfaceContainerHighBrush}"
+                                        CornerRadius="14" Padding="12,10" Margin="0,12,0,0"
+                                        Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Text="Escaneando biblioteca..." FontWeight="SemiBold" FontSize="12"
+                                                   Foreground="{DynamicResource PrimaryBrush}" />
+                                        <TextBlock Text="{Binding ScanStatusText}" FontSize="11"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,3,0,6" />
+                                        <ProgressBar IsIndeterminate="True" Height="4"
+                                                     Foreground="{DynamicResource PrimaryBrush}"
+                                                     Background="{DynamicResource SurfaceContainerBrush}"
+                                                     BorderThickness="0" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 2. CENTER LIBRARY & DETAIL SURFACE CARD -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                            BorderThickness="1"
+                            CornerRadius="24"
+                            ClipToBounds="True">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- TOP HEADER BAR: Title, Search Pill, Sort & Quick Actions -->
+                            <Border Grid.Row="0"
+                                    Background="{DynamicResource SurfaceContainerLowBrush}"
+                                    BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="24,16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" MaxWidth="420" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- View Title + Back Button -->
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                                        <Button Style="{StaticResource IconButtonStyle}"
+                                                Visibility="{Binding HasOpenedCollection, Converter={StaticResource BoolToVis}}"
+                                                Click="CloseOpenedCollection_Click"
+                                                ToolTip="Voltar"
+                                                Margin="0,0,10,0">
+                                            <Path Data="{StaticResource IconBack}" Fill="{DynamicResource OnSurfaceBrush}"
+                                                  Width="16" Height="16" Stretch="Uniform" />
+                                        </Button>
+                                        <TextBlock Text="{Binding CurrentViewTitle}"
+                                                   FontSize="23" FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="260" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+
+                                    <!-- Search / Filter Pill Input -->
+                                    <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBox x:Name="SearchBox"
+                                                 Style="{StaticResource ModernTextBoxStyle}"
+                                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="38,9,34,9" />
+                                        <Path Data="{StaticResource IconSearch}"
+                                              Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                              Width="15" Height="15" Stretch="Uniform"
+                                              IsHitTestVisible="False"
+                                              VerticalAlignment="Center" HorizontalAlignment="Left"
+                                              Margin="14,0,0,0" Opacity="0.75" />
+                                        <TextBlock Text="Pesquisar faixas, artistas, álbuns, gêneros..."
+                                                   IsHitTestVisible="False"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Left"
+                                                   Margin="39,0,0,0"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                   Opacity="0.6"
+                                                   Visibility="{Binding SearchQuery, Converter={StaticResource InverseNullToVis}}" />
+                                        <Button Style="{StaticResource IconButtonStyle}"
+                                                Width="26" Height="26"
+                                                HorizontalAlignment="Right" Margin="0,0,6,0"
+                                                Visibility="{Binding SearchQuery, Converter={StaticResource NullToVis}}"
+                                                Click="ClearSearch_Click" ToolTip="Limpar busca">
+                                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                  Width="11" Height="11" Stretch="Uniform" />
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Sort & Action Controls -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ComboBox x:Name="TrackSortCombo" Width="142" VerticalAlignment="Center"
+                                                  SelectionChanged="TrackSortCombo_SelectionChanged"
+                                                  Margin="0,0,6,0" ToolTip="Critério de ordenação">
+                                            <ComboBoxItem Content="Ordenar: Título" Tag="Title" IsSelected="True" />
+                                            <ComboBoxItem Content="Ordenar: Álbum" Tag="Album" />
+                                            <ComboBoxItem Content="Ordenar: Artista" Tag="Artist" />
+                                            <ComboBoxItem Content="Ordenar: Gênero" Tag="Genre" />
+                                            <ComboBoxItem Content="Ordenar: Ano" Tag="Year" />
+                                            <ComboBoxItem Content="Ordenar: Nº Faixa" Tag="TrackNumber" />
+                                            <ComboBoxItem Content="Ordenar: Recentes" Tag="DateModified" />
+                                        </ComboBox>
+
+                                        <Button Style="{StaticResource IconButtonStyle}"
+                                                Click="ToggleSortOrder_Click"
+                                                ToolTip="Alternar Ordem Crescente / Decrescente"
+                                                Margin="0,0,6,0">
+                                            <TextBlock x:Name="SortOrderIcon" Text="↑" FontWeight="Bold" FontSize="15" />
+                                        </Button>
+
+                                        <Button Style="{StaticResource IconButtonStyle}"
+                                                Click="LocateCurrentTrack_Click"
+                                                Visibility="{Binding HasCurrentTrack, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="Localizar faixa em reprodução"
+                                                Margin="0,0,8,0">
+                                            <Path Data="{StaticResource IconLocate}" Fill="{DynamicResource PrimaryBrush}"
+                                                  Width="16" Height="16" Stretch="Uniform" />
+                                        </Button>
+
+                                        <Button Style="{StaticResource FilledButtonStyle}"
+                                                Padding="16,9"
+                                                Click="CreateNewPlaylist_Click"
+                                                ToolTip="Criar nova Playlist">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource OnPrimaryBrush}"
+                                                      Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" />
+                                                <TextBlock Text="Nova Playlist" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- MAIN TAB CONTENT AREA -->
+                            <Grid Grid.Row="1">
+
+                                <!-- A. TRACKS VIEW -->
+                                <Grid x:Name="TracksTabPanel" Visibility="Visible">
+                                    <ListBox x:Name="TracksListBox"
+                                             ItemsSource="{Binding FilteredTracks}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="16,10"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             MouseDoubleClick="TracksListBox_MouseDoubleClick">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                <Setter Property="Padding" Value="0" />
+                                                <Setter Property="Margin" Value="0,2" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="ItemBorder"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    CornerRadius="16"
+                                                                    Padding="12,8">
+                                                                <ContentPresenter />
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCurrentTrack}" Value="True">
+                                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ActiveRowBrush}" />
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SurfaceContainerHighBrush}" />
+                                                                </Trigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SurfaceContainerHighestBrush}" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="58" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="150" />
+                                                        <ColumnDefinition Width="95" />
+                                                        <ColumnDefinition Width="58" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- 50x50 Rounded Cover Art Thumbnail -->
+                                                    <Border Grid.Column="0" Width="50" Height="50" CornerRadius="12"
+                                                            Background="{DynamicResource SurfaceContainerHighestBrush}"
+                                                            ClipToBounds="True" HorizontalAlignment="Left">
+                                                        <Grid>
+                                                            <Path Data="{StaticResource IconMusicNote}"
+                                                                  Fill="{DynamicResource PrimaryBrush}"
+                                                                  Width="20" Height="20" Stretch="Uniform"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7" />
+                                                            <Image Source="{Binding CoverArtImage}" Stretch="UniformToFill"
+                                                                   Visibility="{Binding HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <!-- Title & Artist • Album -->
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,14,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Width="8" Height="8" CornerRadius="4"
+                                                                    Background="{DynamicResource PrimaryBrush}"
+                                                                    VerticalAlignment="Center" Margin="0,0,8,0"
+                                                                    Visibility="{Binding IsCurrentTrack, Converter={StaticResource BoolToVis}}" />
+                                                            <TextBlock Text="{Binding DisplayTitle}"
+                                                                       FontWeight="SemiBold" FontSize="14.5"
+                                                                       Foreground="{DynamicResource OnSurfaceBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Subtitle}"
+                                                                   FontSize="12.5"
+                                                                   Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                                   TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                                    </StackPanel>
+
+                                                    <!-- Genre -->
+                                                    <TextBlock Grid.Column="2" Text="{Binding DisplayGenre}"
+                                                               VerticalAlignment="Center" FontSize="12"
+                                                               Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                               TextTrimming="CharacterEllipsis" Margin="6,0" />
+
+                                                    <!-- Format Badge -->
+                                                    <Border Grid.Column="3" Background="{DynamicResource PrimaryContainerBrush}"
+                                                            CornerRadius="8" Padding="9,3"
+                                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Format}" FontSize="10.5" FontWeight="Bold"
+                                                                   Foreground="{DynamicResource OnPrimaryContainerBrush}" />
+                                                    </Border>
+
+                                                    <!-- Duration -->
+                                                    <TextBlock Grid.Column="4" Text="{Binding DurationFormatted}"
+                                                               VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                               FontSize="12.5"
+                                                               Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                               Margin="0,0,12,0" />
+
+                                                    <!-- Vector Action Buttons -->
+                                                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="34" Height="34"
+                                                                Click="PlayTrackItem_Click" Tag="{Binding}"
+                                                                ToolTip="Reproduzir agora">
+                                                            <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource PrimaryBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="34" Height="34"
+                                                                Click="PlayNextItem_Click" Tag="{Binding}"
+                                                                ToolTip="Tocar a seguir">
+                                                            <Path Data="{StaticResource IconSkipNext}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="34" Height="34"
+                                                                Click="AddToQueueItem_Click" Tag="{Binding}"
+                                                                ToolTip="Adicionar à fila">
+                                                            <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="34" Height="34"
+                                                                Click="AddTrackToPlaylistMenu_Click" Tag="{Binding}"
+                                                                ToolTip="Mais opções / Adicionar à playlist">
+                                                            <Path Data="{StaticResource IconPlaylists}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                  Width="14" Height="14" Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="34" Height="34"
+                                                                Click="EditTrackInfoItem_Click" Tag="{Binding}"
+                                                                ToolTip="Editar Tags / MusicBrainz">
+                                                            <Path Data="{StaticResource IconEdit}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Empty Library Card -->
+                                    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Background="{DynamicResource SurfaceContainerBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="28" Padding="42,34" MaxWidth="480"
+                                            x:Name="EmptyLibraryCard">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Border Width="68" Height="68" CornerRadius="22"
+                                                    Background="{DynamicResource PrimaryContainerBrush}"
+                                                    HorizontalAlignment="Center" Margin="0,0,0,16">
+                                                <Path Data="{StaticResource IconMusicNote}"
+                                                      Fill="{DynamicResource OnPrimaryContainerBrush}"
+                                                      Width="32" Height="32" Stretch="Uniform"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="Sua biblioteca está vazia"
+                                                       FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                                            <TextBlock Text="Selecione uma pasta com suas músicas (MP3, FLAC, OGG, WAV, M4A) ou arraste arquivos de áudio diretamente para o Lotus."
+                                                       FontSize="13.5" TextWrapping="Wrap" TextAlignment="Center"
+                                                       Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                       Margin="0,8,0,22" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Style="{StaticResource FilledButtonStyle}"
+                                                        Click="AddScanFolder_Click" Margin="0,0,10,0">
+                                                    <TextBlock Text="Escolher Pasta de Músicas" />
+                                                </Button>
+                                                <Button Style="{StaticResource TonalButtonStyle}"
+                                                        Click="OpenAudioFiles_Click">
+                                                    <TextBlock Text="Abrir Arquivos" />
+                                                </Button>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- B. PLAYLISTS / ALBUMS / ARTISTS / GENRES / FOLDERS GRID VIEW -->
+                                <ScrollViewer x:Name="CollectionsTabPanel"
+                                              Visibility="Collapsed"
+                                              VerticalScrollBarVisibility="Auto"
+                                              Padding="24,18">
+                                    <StackPanel>
+                                        <!-- Dynamic Playlists Section -->
+                                        <StackPanel x:Name="DynamicPlaylistsSection" Visibility="Collapsed" Margin="0,0,0,24">
+                                            <Grid Margin="0,0,0,12">
+                                                <TextBlock Text="Playlists Inteligentes" FontSize="17" FontWeight="Bold"
+                                                           VerticalAlignment="Center" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                                            Click="ImportM3u_Click" Margin="0,0,8,0">
+                                                        <TextBlock Text="Importar .M3U" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource FilledButtonStyle}"
+                                                            Click="CreateNewPlaylist_Click">
+                                                        <TextBlock Text="+ Criar Playlist" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <ItemsControl ItemsSource="{Binding DynamicPlaylists}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="280" Margin="0,0,16,14"
+                                                                Background="{DynamicResource PrimaryContainerBrush}"
+                                                                CornerRadius="20" Padding="16" Cursor="Hand"
+                                                                MouseLeftButtonUp="CollectionCard_Click" Tag="{Binding}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="58" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0" Width="54" Height="54" CornerRadius="14"
+                                                                        Background="{DynamicResource SurfaceContainerHighestBrush}" ClipToBounds="True">
+                                                                    <Grid>
+                                                                        <Path Data="{StaticResource IconMusicNote}" Fill="{DynamicResource PrimaryBrush}"
+                                                                              Width="22" Height="22" Stretch="Uniform"
+                                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                        <Image Source="{Binding CoverArtImage}" Stretch="UniformToFill"
+                                                                               Visibility="{Binding HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                                                    </Grid>
+                                                                </Border>
+                                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,8,0">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14.5"
+                                                                               Foreground="{DynamicResource OnPrimaryContainerBrush}"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Text="{Binding Subtitle}" FontSize="12"
+                                                                               Foreground="{DynamicResource OnPrimaryContainerBrush}" Opacity="0.8"
+                                                                               TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                                                </StackPanel>
+                                                                <Button Grid.Column="2" Style="{StaticResource FilledButtonStyle}"
+                                                                        Width="38" Height="38" Padding="0"
+                                                                        Click="PlayCollectionCard_Click" Tag="{Binding}"
+                                                                        ToolTip="Reproduzir playlist">
+                                                                    <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource OnPrimaryBrush}"
+                                                                          Width="14" Height="14" Stretch="Uniform" />
+                                                                </Button>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <TextBlock Text="Suas Playlists Personalizadas" FontSize="17" FontWeight="Bold" Margin="0,10,0,6" />
+                                        </StackPanel>
+
+                                        <!-- Collection Cards Grid -->
+                                        <ItemsControl x:Name="CollectionsItemsControl">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="212" Margin="0,0,16,16"
+                                                            Background="{DynamicResource SurfaceContainerBrush}"
+                                                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="22" Padding="14" Cursor="Hand"
+                                                            MouseLeftButtonUp="CollectionCard_Click" Tag="{Binding}">
+                                                        <StackPanel>
+                                                            <Border Height="168" CornerRadius="16"
+                                                                    Background="{DynamicResource SurfaceContainerHighBrush}"
+                                                                    ClipToBounds="True" Margin="0,0,0,12">
+                                                                <Grid>
+                                                                    <Path Data="{StaticResource IconAlbum}"
+                                                                          Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                          Width="48" Height="48" Stretch="Uniform"
+                                                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                          Opacity="0.3" />
+                                                                    <Image Source="{Binding CoverArtImage}" Stretch="UniformToFill"
+                                                                           Visibility="{Binding HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                                                    <Button Style="{StaticResource FilledButtonStyle}"
+                                                                            Width="42" Height="42" Padding="0"
+                                                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                                            Margin="10"
+                                                                            Click="PlayCollectionCard_Click" Tag="{Binding}"
+                                                                            ToolTip="Reproduzir">
+                                                                        <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource OnPrimaryBrush}"
+                                                                              Width="15" Height="15" Stretch="Uniform" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14.5"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="12"
+                                                                       Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <!-- C. OPENED COLLECTION DETAIL VIEW -->
+                                <Grid x:Name="OpenedCollectionPanel"
+                                      Visibility="{Binding HasOpenedCollection, Converter={StaticResource BoolToVis}}"
+                                      Background="{DynamicResource SurfaceBrush}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0"
+                                            Background="{DynamicResource SurfaceContainerBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            Margin="20,16,20,8" CornerRadius="22" Padding="22">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="128" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Width="128" Height="128" CornerRadius="18"
+                                                    Background="{DynamicResource SurfaceContainerHighestBrush}" ClipToBounds="True">
+                                                <Grid>
+                                                    <Path Data="{StaticResource IconAlbum}" Fill="{DynamicResource PrimaryBrush}"
+                                                          Width="44" Height="44" Stretch="Uniform"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5" />
+                                                    <Image Source="{Binding OpenedCollection.CoverArtImage}" Stretch="UniformToFill"
+                                                           Visibility="{Binding OpenedCollection.HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                                </Grid>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="22,0">
+                                                <TextBlock Text="{Binding OpenedCollection.Category}" FontSize="11.5" FontWeight="Bold"
+                                                           Foreground="{DynamicResource PrimaryBrush}" />
+                                                <TextBlock Text="{Binding OpenedCollection.Name}" FontSize="26" FontWeight="Bold"
+                                                           TextTrimming="CharacterEllipsis" Margin="0,2,0,4" />
+                                                <TextBlock Text="{Binding OpenedCollection.Subtitle}" FontSize="13.5"
+                                                           Foreground="{DynamicResource OnSurfaceVariantBrush}" />
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                                    <Button Style="{StaticResource FilledButtonStyle}"
+                                                            Click="PlayOpenedCollection_Click" Margin="0,0,10,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource OnPrimaryBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" />
+                                                            <TextBlock Text="Reproduzir Tudo" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                                            Click="ShuffleOpenedCollection_Click" Margin="0,0,10,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{StaticResource IconShuffle}" Fill="{DynamicResource OnSurfaceBrush}"
+                                                                  Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" />
+                                                            <TextBlock Text="Aleatório" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                                            Visibility="{Binding OpenedCollection.IsUserEditable, Converter={StaticResource BoolToVis}}"
+                                                            Click="RenameOpenedPlaylist_Click" Margin="0,0,8,0">
+                                                        <TextBlock Text="Renomear" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                                            Visibility="{Binding OpenedCollection.IsUserEditable, Converter={StaticResource BoolToVis}}"
+                                                            Click="ExportOpenedPlaylist_Click" Margin="0,0,8,0">
+                                                        <TextBlock Text="Exportar M3U" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                                            Visibility="{Binding OpenedCollection.IsUserEditable, Converter={StaticResource BoolToVis}}"
+                                                            Click="DeleteOpenedPlaylist_Click">
+                                                        <TextBlock Text="Excluir" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <ListBox Grid.Row="1"
+                                             ItemsSource="{Binding OpenedCollectionTracks}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="18,6"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             MouseDoubleClick="CollectionTracksListBox_MouseDoubleClick">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                <Setter Property="Padding" Value="0" />
+                                                <Setter Property="Margin" Value="0,2" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="Bd" Background="Transparent" CornerRadius="14" Padding="12,8">
+                                                                <ContentPresenter />
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCurrentTrack}" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ActiveRowBrush}" />
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceContainerHighBrush}" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="48" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="80" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Border Grid.Column="0" Width="42" Height="42" CornerRadius="10"
+                                                            Background="{DynamicResource SurfaceContainerHighestBrush}" ClipToBounds="True">
+                                                        <Grid>
+                                                            <Path Data="{StaticResource IconMusicNote}" Fill="{DynamicResource PrimaryBrush}"
+                                                                  Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            <Image Source="{Binding CoverArtImage}" Stretch="UniformToFill"
+                                                                   Visibility="{Binding HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
+                                                        <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold" FontSize="14"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="12"
+                                                                   Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Column="2" Text="{Binding DurationFormatted}"
+                                                               VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                               Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,12,0" />
+
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="32" Height="32"
+                                                                Click="PlayFromOpenedCollection_Click" Tag="{Binding}" ToolTip="Reproduzir">
+                                                            <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource PrimaryBrush}"
+                                                                  Width="12" Height="12" Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30"
+                                                                Click="MoveTrackUpInPlaylist_Click" Tag="{Binding}" ToolTip="Mover para cima">
+                                                            <TextBlock Text="↑" FontSize="13" FontWeight="Bold" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30"
+                                                                Click="MoveTrackDownInPlaylist_Click" Tag="{Binding}" ToolTip="Mover para baixo">
+                                                            <TextBlock Text="↓" FontSize="13" FontWeight="Bold" />
+                                                        </Button>
+                                                        <Button Style="{StaticResource IconButtonStyle}" Width="32" Height="32"
+                                                                Click="RemoveTrackFromOpenedPlaylist_Click" Tag="{Binding}" ToolTip="Remover da playlist">
+                                                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                                  Width="11" Height="11" Stretch="Uniform" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <!-- 3. RIGHT DOCKED FLOATING CARDS: SYNCHRONIZED LYRICS & PLAYBACK QUEUE -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+
+                        <!-- SYNCHRONIZED LYRICS CARD (Mesh Gradient + Focal Sync) -->
+                        <Border Width="400"
+                                Margin="12,0,0,0"
+                                Background="{DynamicResource LyricsMeshBrush}"
+                                BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24"
+                                ClipToBounds="True"
+                                Visibility="{Binding IsLyricsPanelOpen, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Lyrics Header Bar -->
+                                <Grid Grid.Row="0" Margin="14,14,14,8">
+                                    <Button Style="{StaticResource IconButtonStyle}"
+                                            HorizontalAlignment="Left"
+                                            Foreground="{DynamicResource LyricsContentBrush}"
+                                            Click="CloseLyricsPanel_Click"
+                                            ToolTip="Fechar painel de letras">
+                                        <Path Data="{StaticResource IconClose}" Fill="{DynamicResource LyricsContentBrush}"
+                                              Width="14" Height="14" Stretch="Uniform" />
+                                    </Button>
+
+                                    <Border HorizontalAlignment="Center"
+                                            Background="#25000000"
+                                            CornerRadius="18" Padding="4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button x:Name="BtnSyncedLyricsMode"
+                                                    Style="{StaticResource TonalButtonStyle}"
+                                                    Padding="14,5" FontSize="12"
+                                                    Click="SelectSyncedLyricsMode_Click">
+                                                <TextBlock Text="Sincronizada" />
+                                            </Button>
+                                            <Button x:Name="BtnPlainLyricsMode"
+                                                    Style="{StaticResource TonalButtonStyle}"
+                                                    Padding="14,5" FontSize="12" Margin="4,0,0,0"
+                                                    Click="SelectPlainLyricsMode_Click">
+                                                <TextBlock Text="Texto Puro" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Style="{StaticResource IconButtonStyle}"
+                                            HorizontalAlignment="Right"
+                                            Foreground="{DynamicResource LyricsContentBrush}"
+                                            Click="ToggleFullscreenLyrics_Click"
+                                            ToolTip="Expandir Letras em Tela Cheia (F11)">
+                                        <Path Data="{StaticResource IconFullscreen}" Fill="{DynamicResource LyricsContentBrush}"
+                                              Width="15" Height="15" Stretch="Uniform" />
+                                    </Button>
+                                </Grid>
+
+                                <!-- Sync Offset & LRC Tools -->
+                                <Border Grid.Row="1" Margin="14,0,14,8"
+                                        Background="#26000000" CornerRadius="14" Padding="12,6">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="Sincronia:" FontSize="11.5"
+                                                       Foreground="{DynamicResource LyricsContentBrush}"
+                                                       Opacity="0.8" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <Button Style="{StaticResource IconButtonStyle}" Width="26" Height="26"
+                                                    Click="LyricsOffsetMinus_Click" ToolTip="Atrasar 100ms">
+                                                <Path Data="{StaticResource IconMinus}" Fill="{DynamicResource LyricsContentBrush}"
+                                                      Width="10" Height="10" Stretch="Uniform" />
+                                            </Button>
+                                            <TextBlock Text="{Binding Settings.LyricsSyncOffsetMs, StringFormat='{}{0} ms'}"
+                                                       FontSize="11.5" FontWeight="Bold"
+                                                       Foreground="{DynamicResource LyricsAccentBrush}"
+                                                       VerticalAlignment="Center" Margin="6,0" />
+                                            <Button Style="{StaticResource IconButtonStyle}" Width="26" Height="26"
+                                                    Click="LyricsOffsetPlus_Click" ToolTip="Adiantar 100ms">
+                                                <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource LyricsContentBrush}"
+                                                      Width="10" Height="10" Stretch="Uniform" />
+                                            </Button>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30"
+                                                    Click="LoadExternalLrc_Click" ToolTip="Importar arquivo .LRC local">
+                                                <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource LyricsContentBrush}"
+                                                      Width="14" Height="14" Stretch="Uniform" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30"
+                                                    Click="RefetchLrclib_Click" ToolTip="Buscar novamente no LRCLIB">
+                                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource LyricsContentBrush}"
+                                                      Width="14" Height="14" Stretch="Uniform" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconButtonStyle}" Width="30" Height="30"
+                                                    Click="PublishLrclib_Click" ToolTip="Publicar letra no LRCLIB">
+                                                <Path Data="{StaticResource IconCloudUpload}" Fill="{DynamicResource LyricsContentBrush}"
+                                                      Width="15" Height="15" Stretch="Uniform" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Synced Lyrics List -->
+                                <ListBox x:Name="SyncedLyricsListBox"
+                                         Grid.Row="2"
+                                         ItemsSource="{Binding ActiveLyricLines}"
+                                         Visibility="{Binding ShowSyncedLyrics, Converter={StaticResource BoolToVis}}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="20,24"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         SelectionChanged="SyncedLyricsListBox_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,6" />
+                                            <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="LyricBd" Background="Transparent" CornerRadius="14" Padding="12,10">
+                                                            <ContentPresenter />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter TargetName="LyricBd" Property="Background" Value="#20FFFFFF" />
+                                                            </DataTrigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="LyricBd" Property="Background" Value="#16FFFFFF" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayText}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="{Binding DataContext.Settings.LyricsFontSize, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource LyricsContentBrush}" />
+                                                        <Setter Property="Opacity" Value="0.40" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource LyricsAccentBrush}" />
+                                                                <Setter Property="Opacity" Value="1.0" />
+                                                                <Setter Property="FontWeight" Value="Bold" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsPassed}" Value="True">
+                                                                <Setter Property="Opacity" Value="0.26" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <!-- Plain Lyrics View -->
+                                <ScrollViewer Grid.Row="2"
+                                              Visibility="{Binding ShowSyncedLyrics, Converter={StaticResource InverseBoolToVis}}"
+                                              Padding="22,18">
+                                    <ItemsControl ItemsSource="{Binding PlainLyricLines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Foreground="{DynamicResource LyricsContentBrush}"
+                                                           FontSize="17"
+                                                           FontWeight="Medium"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,5" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <!-- Loading / Empty State -->
+                                <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Visibility="{Binding HasAnyLyrics, Converter={StaticResource InverseBoolToVis}}"
+                                            Margin="28">
+                                    <TextBlock Text="Buscando letra sincronizada no LRCLIB..."
+                                               Foreground="{DynamicResource LyricsContentBrush}"
+                                               FontSize="15" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               Visibility="{Binding IsLoadingLyrics, Converter={StaticResource BoolToVis}}" />
+                                    <TextBlock Text="Nenhuma letra encontrada para esta faixa."
+                                               Foreground="{DynamicResource LyricsContentBrush}"
+                                               Opacity="0.72" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"
+                                               Visibility="{Binding IsLoadingLyrics, Converter={StaticResource InverseBoolToVis}}" />
+                                    <Button Style="{StaticResource TonalButtonStyle}" Margin="0,14,0,0"
+                                            HorizontalAlignment="Center"
+                                            Click="LoadExternalLrc_Click">
+                                        <TextBlock Text="Importar arquivo .LRC" />
+                                    </Button>
+                                </StackPanel>
+
+                                <Border Grid.Row="3" Padding="12,9" Background="#22000000">
+                                    <TextBlock Text="Letras sincronizadas via LRCLIB (lrclib.net)"
+                                               FontSize="11" HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource LyricsContentBrush}" Opacity="0.65" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- PLAYBACK QUEUE CARD -->
+                        <Border Width="340"
+                                Margin="12,0,0,0"
+                                Background="{DynamicResource SurfaceContainerLowBrush}"
+                                BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24"
+                                ClipToBounds="True"
+                                Visibility="{Binding IsQueuePanelOpen, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="18,16,14,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Fila de Reprodução" FontSize="17" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding Queue.Count, StringFormat='{}{0} faixas na fila'}"
+                                                   FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" />
+                                    </StackPanel>
+                                    <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right"
+                                            Click="CloseQueuePanel_Click">
+                                        <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceBrush}"
+                                              Width="13" Height="13" Stretch="Uniform" />
+                                    </Button>
+                                </Grid>
+
+                                <ListBox Grid.Row="1"
+                                         ItemsSource="{Binding Queue}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="12,4"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         MouseDoubleClick="QueueListBox_MouseDoubleClick">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="8,6" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Width="7" Height="7" CornerRadius="3.5"
+                                                                Background="{DynamicResource PrimaryBrush}"
+                                                                VerticalAlignment="Center" Margin="0,0,7,0"
+                                                                Visibility="{Binding IsCurrentTrack, Converter={StaticResource BoolToVis}}" />
+                                                        <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold" FontSize="13"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding DisplayArtist}" FontSize="11.5"
+                                                               Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" Width="28" Height="28"
+                                                        Click="RemoveQueueItem_Click" Tag="{Binding}" ToolTip="Remover da fila">
+                                                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                                          Width="10" Height="10" Stretch="Uniform" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ==================== 2. FLOATING MATERIAL YOU PLAYER BAR WITH WAVING SEEKBAR ==================== -->
+                <Border Grid.Row="2"
+                        Margin="12,10,12,12"
+                        Background="{DynamicResource SurfaceContainerBrush}"
+                        BorderBrush="{DynamicResource OutlineVariantBrush}"
+                        BorderThickness="1"
+                        CornerRadius="26"
+                        Padding="22,12">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.35" Color="Black" />
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="330" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="330" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Cover Art with Shadow + Track Info + Audio Quality Badge -->
+                        <Grid Grid.Column="0" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="64" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Width="60" Height="60" CornerRadius="16"
+                                    Background="{DynamicResource SurfaceContainerHighestBrush}"
+                                    ClipToBounds="True" Cursor="Hand"
+                                    MouseLeftButtonUp="ToggleFullscreenLyrics_Click"
+                                    ToolTip="Clique para abrir o Player Imersivo &amp; Letras">
+                                <Grid>
+                                    <Path Data="{StaticResource IconMusicNote}"
+                                          Fill="{DynamicResource PrimaryBrush}"
+                                          Width="24" Height="24" Stretch="Uniform"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Image Source="{Binding CurrentTrack.CoverArtImage}" Stretch="UniformToFill"
+                                           Visibility="{Binding CurrentTrack.HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                </Grid>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,8,0">
+                                <TextBlock Text="{Binding CurrentTrack.DisplayTitle, FallbackValue='Nenhuma faixa selecionada'}"
+                                           FontWeight="Bold" FontSize="15"
+                                           Foreground="{DynamicResource OnSurfaceBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding CurrentTrack.DisplayArtist, FallbackValue='Escolha uma música para reproduzir'}"
+                                           FontSize="12.5"
+                                           Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,2,0,5" />
+
+                                <Border Background="{DynamicResource PrimaryContainerBrush}"
+                                        CornerRadius="7" Padding="7,2" HorizontalAlignment="Left"
+                                        Cursor="Hand"
+                                        Visibility="{Binding HasCurrentTrack, Converter={StaticResource BoolToVis}}"
+                                        MouseLeftButtonUp="CurrentTrackQualityBadge_Click"
+                                        ToolTip="Clique para ver detalhes e editar tags / MusicBrainz">
+                                    <TextBlock Text="{Binding CurrentTrack.AudioQualityBadge}"
+                                               FontSize="10" FontWeight="Bold"
+                                               Foreground="{DynamicResource OnPrimaryContainerBrush}" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Center: Transport Buttons + Animated WavingSeekBar -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="600">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                                <Button Style="{StaticResource IconButtonStyle}"
+                                        Click="CyclePlaybackMode_Click"
+                                        ToolTip="Alternar modo de repetição / aleatório"
+                                        Margin="0,0,10,0">
+                                    <Path x:Name="PlaybackModePath"
+                                          Data="{StaticResource IconRepeat}"
+                                          Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                          Width="16" Height="16" Stretch="Uniform" />
+                                </Button>
+
+                                <Button Style="{StaticResource IconButtonStyle}"
+                                        Click="PreviousTrack_Click"
+                                        ToolTip="Faixa anterior (ou início)"
+                                        Margin="0,0,10,0">
+                                    <Path Data="{StaticResource IconSkipPrevious}"
+                                          Fill="{DynamicResource OnSurfaceBrush}"
+                                          Width="18" Height="18" Stretch="Uniform" />
+                                </Button>
+
+                                <!-- Primary Rounded Pill Play/Pause Button -->
+                                <Button Style="{StaticResource FilledButtonStyle}"
+                                        Width="58" Height="42" Padding="0"
+                                        Click="PlayPause_Click"
+                                        ToolTip="Reproduzir / Pausar (Espaço)"
+                                        Margin="0,0,10,0">
+                                    <Path x:Name="PlayPausePath"
+                                          Data="{StaticResource IconPlay}"
+                                          Fill="{DynamicResource OnPrimaryBrush}"
+                                          Width="18" Height="18" Stretch="Uniform" />
+                                </Button>
+
+                                <Button Style="{StaticResource IconButtonStyle}"
+                                        Click="NextTrack_Click"
+                                        ToolTip="Próxima faixa"
+                                        Margin="0,0,10,0">
+                                    <Path Data="{StaticResource IconSkipNext}"
+                                          Fill="{DynamicResource OnSurfaceBrush}"
+                                          Width="18" Height="18" Stretch="Uniform" />
+                                </Button>
+
+                                <Button Style="{StaticResource IconButtonStyle}"
+                                        Click="OpenSleepTimerDialog_Click"
+                                        ToolTip="Temporizador de Sono (Sleep Timer)">
+                                    <Path Data="{StaticResource IconTimer}"
+                                          Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                          Width="16" Height="16" Stretch="Uniform" />
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Lotus WavingSeekBar Row -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="48" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding PositionFormatted}"
+                                           FontSize="11.5" FontWeight="Medium"
+                                           Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                           VerticalAlignment="Center" />
+                                <controls:WavingSeekBar x:Name="MainWavingSeekBar"
+                                                        Grid.Column="1"
+                                                        Minimum="0"
+                                                        Maximum="{Binding DurationMs}"
+                                                        Value="{Binding PositionMs, Mode=OneWay}"
+                                                        IsPlaying="{Binding IsPlaying}"
+                                                        ActiveBrush="{DynamicResource PrimaryBrush}"
+                                                        InactiveBrush="{DynamicResource SurfaceContainerHighestBrush}"
+                                                        SeekCompleted="WavingSeekBar_SeekCompleted" />
+                                <TextBlock Grid.Column="2" Text="{Binding DurationFormatted}"
+                                           FontSize="11.5" FontWeight="Medium"
+                                           Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Right: Sleep Timer Pill, Lyrics, Fullscreen, Queue, Edit Tags, Volume -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center">
+
+                            <Border Background="{DynamicResource SecondaryContainerBrush}"
+                                    CornerRadius="12" Padding="9,4" Margin="0,0,8,0"
+                                    Visibility="{Binding HasSleepTimer, Converter={StaticResource BoolToVis}}"
+                                    Cursor="Hand" MouseLeftButtonUp="OpenSleepTimerDialog_Click">
+                                <TextBlock Text="{Binding SleepTimerStatusText}"
+                                           FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource OnSecondaryContainerBrush}" />
+                            </Border>
+
+                            <Button Style="{StaticResource IconButtonStyle}"
+                                    Click="ToggleLyricsPanel_Click"
+                                    ToolTip="Letras Sincronizadas (Ctrl+L)"
+                                    Margin="0,0,4,0">
+                                <Path Data="{StaticResource IconLyrics}" Fill="{DynamicResource OnSurfaceBrush}"
+                                      Width="16" Height="16" Stretch="Uniform" />
+                            </Button>
+
+                            <Button Style="{StaticResource IconButtonStyle}"
+                                    Click="ToggleFullscreenLyrics_Click"
+                                    ToolTip="Player Imersivo &amp; Letras em Tela Cheia (F11)"
+                                    Margin="0,0,4,0">
+                                <Path Data="{StaticResource IconFullscreen}" Fill="{DynamicResource OnSurfaceBrush}"
+                                      Width="16" Height="16" Stretch="Uniform" />
+                            </Button>
+
+                            <Button Style="{StaticResource IconButtonStyle}"
+                                    Click="ToggleQueuePanel_Click"
+                                    ToolTip="Fila de Reprodução"
+                                    Margin="0,0,4,0">
+                                <Path Data="{StaticResource IconQueue}" Fill="{DynamicResource OnSurfaceBrush}"
+                                      Width="16" Height="16" Stretch="Uniform" />
+                            </Button>
+
+                            <Button Style="{StaticResource IconButtonStyle}"
+                                    Click="EditCurrentTrack_Click"
+                                    Visibility="{Binding HasCurrentTrack, Converter={StaticResource BoolToVis}}"
+                                    ToolTip="Editar Metadados / MusicBrainz"
+                                    Margin="0,0,10,0">
+                                <Path Data="{StaticResource IconEdit}" Fill="{DynamicResource OnSurfaceBrush}"
+                                      Width="15" Height="15" Stretch="Uniform" />
+                            </Button>
+
+                            <Path Data="{StaticResource IconVolume}" Fill="{DynamicResource OnSurfaceVariantBrush}"
+                                  Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Slider Width="88" Minimum="0" Maximum="1"
+                                    Value="{Binding Settings.Volume, Mode=TwoWay}"
+                                    VerticalAlignment="Center" Cursor="Hand"
+                                    ToolTip="Volume" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ==================== 3. IMMERSIVE FULLSCREEN PLAYER & LYRICS OVERLAY ==================== -->
+                <Border Grid.Row="1" Grid.RowSpan="2"
+                        Margin="12,0,12,12"
+                        CornerRadius="28"
+                        ClipToBounds="True"
+                        Background="{DynamicResource LyricsMeshBrush}"
+                        Visibility="{Binding IsLyricsFullscreen, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <!-- Blurred Ambient Album Art Backdrop -->
+                        <Image Source="{Binding CurrentTrack.CoverArtImage}"
+                               Stretch="UniformToFill"
+                               Opacity="0.16"
+                               IsHitTestVisible="False">
+                            <Image.Effect>
+                                <BlurEffect Radius="85" />
+                            </Image.Effect>
+                        </Image>
+
+                        <Grid Margin="52,36">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="400" />
+                                <ColumnDefinition Width="56" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left Column: High-Res Album Art + Track Info + WavingSeekBar + Transport -->
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <Border Width="330" Height="330" CornerRadius="32"
+                                        Background="{DynamicResource SurfaceContainerHighBrush}"
+                                        ClipToBounds="True" HorizontalAlignment="Center">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="36" ShadowDepth="10" Opacity="0.55" Color="Black" />
+                                    </Border.Effect>
+                                    <Grid>
+                                        <Path Data="{StaticResource IconMusicNote}"
+                                              Fill="{DynamicResource LyricsAccentBrush}"
+                                              Width="90" Height="90" Stretch="Uniform"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Image Source="{Binding CurrentTrack.CoverArtImage}" Stretch="UniformToFill"
+                                               Visibility="{Binding CurrentTrack.HasCoverArt, Converter={StaticResource BoolToVis}}" />
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Text="{Binding CurrentTrack.DisplayTitle}"
+                                           FontSize="26" FontWeight="Bold"
+                                           Foreground="{DynamicResource LyricsContentBrush}"
+                                           TextAlignment="Center" TextWrapping="Wrap"
+                                           Margin="0,26,0,6" />
+                                <TextBlock Text="{Binding CurrentTrack.Subtitle}"
+                                           FontSize="15.5"
+                                           Foreground="{DynamicResource LyricsAccentBrush}"
+                                           TextAlignment="Center" TextWrapping="Wrap"
+                                           Margin="0,0,0,18" />
+
+                                <controls:WavingSeekBar Minimum="0"
+                                                        Maximum="{Binding DurationMs}"
+                                                        Value="{Binding PositionMs, Mode=OneWay}"
+                                                        IsPlaying="{Binding IsPlaying}"
+                                                        ActiveBrush="{DynamicResource LyricsAccentBrush}"
+                                                        InactiveBrush="#38FFFFFF"
+                                                        SeekCompleted="WavingSeekBar_SeekCompleted"
+                                                        Margin="10,0" />
+
+                                <Grid Margin="14,2,14,16">
+                                    <TextBlock Text="{Binding PositionFormatted}" FontSize="12"
+                                               Foreground="{DynamicResource LyricsContentBrush}" Opacity="0.75" />
+                                    <TextBlock Text="{Binding DurationFormatted}" FontSize="12" HorizontalAlignment="Right"
+                                               Foreground="{DynamicResource LyricsContentBrush}" Opacity="0.75" />
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Style="{StaticResource IconButtonStyle}" Width="48" Height="48"
+                                            Click="PreviousTrack_Click" Margin="0,0,14,0">
+                                        <Path Data="{StaticResource IconSkipPrevious}" Fill="{DynamicResource LyricsContentBrush}"
+                                              Width="22" Height="22" Stretch="Uniform" />
+                                    </Button>
+                                    <Button Style="{StaticResource FilledButtonStyle}" Width="68" Height="50"
+                                            Click="PlayPause_Click" Margin="0,0,14,0">
+                                        <Path x:Name="FullscreenPlayPausePath"
+                                              Data="{StaticResource IconPlay}" Fill="{DynamicResource OnPrimaryBrush}"
+                                              Width="22" Height="22" Stretch="Uniform" />
+                                    </Button>
+                                    <Button Style="{StaticResource IconButtonStyle}" Width="48" Height="48"
+                                            Click="NextTrack_Click">
+                                        <Path Data="{StaticResource IconSkipNext}" Fill="{DynamicResource LyricsContentBrush}"
+                                              Width="22" Height="22" Stretch="Uniform" />
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Right Column: Large Expressive Synchronized Lyrics -->
+                            <Grid Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
+                                    <Button Style="{StaticResource TonalButtonStyle}"
+                                            Click="ToggleFullscreenLyrics_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceBrush}"
+                                                  Width="12" Height="12" Stretch="Uniform" Margin="0,0,8,0" />
+                                            <TextBlock Text="Voltar à Biblioteca (Esc)" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+
+                                <ListBox x:Name="FullscreenLyricsListBox"
+                                         Grid.Row="1"
+                                         ItemsSource="{Binding ActiveLyricLines}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         SelectionChanged="SyncedLyricsListBox_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="16,12" />
+                                            <Setter Property="Margin" Value="0,6" />
+                                            <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="FsBd" Background="Transparent" CornerRadius="18" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter TargetName="FsBd" Property="Background" Value="#1EFFFFFF" />
+                                                            </DataTrigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="FsBd" Property="Background" Value="#14FFFFFF" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayText}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="32">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource LyricsContentBrush}" />
+                                                        <Setter Property="Opacity" Value="0.34" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource LyricsAccentBrush}" />
+                                                                <Setter Property="Opacity" Value="1.0" />
+                                                                <Setter Property="FontWeight" Value="Bold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ==================== 4. TRACK INFO & METADATA EDITOR + MUSICBRAINZ MODAL ==================== -->
+                <Grid Grid.Row="1" Grid.RowSpan="2"
+                      Background="#C4000000"
+                      Visibility="{Binding IsTrackInfoOpen, Converter={StaticResource BoolToVis}}">
+                    <Border Width="840" MaxHeight="720"
+                            Background="{DynamicResource SurfaceContainerBrush}"
+                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                            BorderThickness="1"
+                            CornerRadius="28"
+                            Padding="30">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.6" Color="Black" />
+                        </Border.Effect>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,18">
+                                <StackPanel>
+                                    <TextBlock Text="Detalhes da Faixa &amp; Editor de Metadados"
+                                               FontSize="21" FontWeight="Bold" />
+                                    <TextBlock Text="{Binding InspectedTrack.FilePath}"
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                               TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                </StackPanel>
+                                <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right"
+                                        Click="CloseTrackInfo_Click">
+                                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceBrush}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.15*" />
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="0.95*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Manual Tag Fields -->
+                                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="96" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="88" Height="88" CornerRadius="16"
+                                                    Background="{DynamicResource SurfaceContainerHighestBrush}" ClipToBounds="True">
+                                                <Image x:Name="EditCoverPreview" Stretch="UniformToFill" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0">
+                                                <TextBlock Text="{Binding InspectedTrack.AudioQualityBadge}"
+                                                           FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" />
+                                                <TextBlock Text="{Binding InspectedTrack.SizeFormatted, StringFormat='Tamanho: {0}'}"
+                                                           FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,2" />
+                                                <Button Style="{StaticResource TonalButtonStyle}"
+                                                        HorizontalAlignment="Left" Margin="0,6,0,0"
+                                                        Click="PickNewCoverArt_Click">
+                                                    <TextBlock Text="Alterar Capa do Álbum" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="Título" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="EditTitleBox" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,10" />
+
+                                        <TextBlock Text="Artista" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="EditArtistBox" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,10" />
+
+                                        <TextBlock Text="Álbum" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="EditAlbumBox" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,10" />
+
+                                        <TextBlock Text="Artista do Álbum" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="EditAlbumArtistBox" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,10" />
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="10" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="10" />
+                                                <ColumnDefinition Width="90" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Gênero" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                                <TextBox x:Name="EditGenreBox" Style="{StaticResource ModernTextBoxStyle}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Ano" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                                <TextBox x:Name="EditYearBox" Style="{StaticResource ModernTextBoxStyle}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Text="Nº Faixa" FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                                <TextBox x:Name="EditTrackNumBox" Style="{StaticResource ModernTextBoxStyle}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="Letra Embutida (Tag LYRICS / LRC)" FontSize="12"
+                                                   Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="EditLyricsBox" Style="{StaticResource ModernTextBoxStyle}"
+                                                 AcceptsReturn="True" Height="90" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <!-- MusicBrainz Automatic Metadata Search -->
+                                <Border Grid.Column="2"
+                                        Background="{DynamicResource SurfaceContainerLowBrush}"
+                                        BorderBrush="{DynamicResource OutlineVariantBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="20" Padding="18">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Text="Buscar no MusicBrainz"
+                                                   FontWeight="Bold" FontSize="15" Margin="0,0,0,10" />
+
+                                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="MusicBrainzQueryBox" Grid.Column="0"
+                                                     Style="{StaticResource ModernTextBoxStyle}" />
+                                            <Button Grid.Column="2" Style="{StaticResource FilledButtonStyle}"
+                                                    Click="SearchMusicBrainz_Click">
+                                                <TextBlock Text="Buscar" />
+                                            </Button>
+                                        </Grid>
+
+                                        <ListBox Grid.Row="2"
+                                                 ItemsSource="{Binding MusicBrainzResults}"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                 SelectionChanged="MusicBrainzResults_SelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource SurfaceContainerHighBrush}"
+                                                            CornerRadius="12" Padding="12,9" Margin="0,3" Cursor="Hand">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding DisplaySummary}" FontSize="11.5"
+                                                                       Foreground="{DynamicResource OnSurfaceVariantBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding GenresDisplay}" FontSize="11"
+                                                                       Foreground="{DynamicResource PrimaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                                <Button Style="{StaticResource TonalButtonStyle}"
+                                        Click="OpenFileLocation_Click" Margin="0,0,10,0">
+                                    <TextBlock Text="Mostrar no Explorer" />
+                                </Button>
+                                <Button Style="{StaticResource TonalButtonStyle}"
+                                        Click="CloseTrackInfo_Click" Margin="0,0,10,0">
+                                    <TextBlock Text="Cancelar" />
+                                </Button>
+                                <Button Style="{StaticResource FilledButtonStyle}"
+                                        Click="SaveTrackMetadata_Click">
+                                    <TextBlock Text="Salvar Metadados no Arquivo" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- ==================== 5. SETTINGS MODAL (Material You, Lyrics, Scanner, About) ==================== -->
+                <Grid Grid.Row="1" Grid.RowSpan="2"
+                      Background="#C4000000"
+                      Visibility="{Binding IsSettingsPanelOpen, Converter={StaticResource BoolToVis}}">
+                    <Border Width="680" MaxHeight="690"
+                            Background="{DynamicResource SurfaceContainerBrush}"
+                            BorderBrush="{DynamicResource OutlineVariantBrush}"
+                            BorderThickness="1"
+                            CornerRadius="28"
+                            Padding="30">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.6" Color="Black" />
+                        </Border.Effect>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,18">
+                                <TextBlock Text="Configurações do Lotus" FontSize="22" FontWeight="Bold" />
+                                <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right"
+                                        Click="CloseSettings_Click">
+                                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource OnSurfaceBrush}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+                                <StackPanel>
+                                    <!-- 1. Material You & Theme -->
+                                    <TextBlock Text="TEMA E CORES DINÂMICAS (MATERIAL YOU)" FontSize="11.5" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryBrush}" Margin="4,0,0,8" />
+
+                                    <Border Background="{DynamicResource SurfaceContainerLowBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}" BorderThickness="1"
+                                            CornerRadius="18" Padding="18" Margin="0,0,0,18">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,12">
+                                                <TextBlock Text="Modo de Aparência" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                                <ComboBox x:Name="AppearanceCombo" Width="190" HorizontalAlignment="Right"
+                                                          SelectionChanged="AppearanceCombo_SelectionChanged">
+                                                    <ComboBoxItem Content="Seguir o Windows" Tag="System" />
+                                                    <ComboBoxItem Content="Claro (Light)" Tag="Light" />
+                                                    <ComboBoxItem Content="Escuro (Dark)" Tag="Dark" IsSelected="True" />
+                                                </ComboBox>
+                                            </Grid>
+
+                                            <Grid Margin="0,0,0,12">
+                                                <TextBlock Text="Estilo da Paleta Material You" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                                <ComboBox x:Name="PaletteStyleCombo" Width="190" HorizontalAlignment="Right"
+                                                          SelectionChanged="PaletteStyleCombo_SelectionChanged">
+                                                    <ComboBoxItem Content="Tonal Spot (Padrão)" Tag="TonalSpot" IsSelected="True" />
+                                                    <ComboBoxItem Content="Vibrant" Tag="Vibrant" />
+                                                    <ComboBoxItem Content="Expressive" Tag="Expressive" />
+                                                    <ComboBoxItem Content="Neutral" Tag="Neutral" />
+                                                    <ComboBoxItem Content="Monochrome" Tag="Monochrome" />
+                                                </ComboBox>
+                                            </Grid>
+
+                                            <CheckBox Content="Extrair paleta de cores dinamicamente da capa do álbum"
+                                                      IsChecked="{Binding Settings.UseAlbumArtColor, Mode=TwoWay}" />
+
+                                            <CheckBox Content="Modo Escuro Puro (AMOLED Preto)"
+                                                      IsChecked="{Binding Settings.AmoledDarkTheme, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 2. Lyrics Settings -->
+                                    <TextBlock Text="LETRAS SINCRONIZADAS (LRCLIB)" FontSize="11.5" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryBrush}" Margin="4,0,0,8" />
+
+                                    <Border Background="{DynamicResource SurfaceContainerLowBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}" BorderThickness="1"
+                                            CornerRadius="18" Padding="18" Margin="0,0,0,18">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,10">
+                                                <TextBlock Text="{Binding Settings.LyricsFontSize, StringFormat='Tamanho da fonte das letras ({0:0} px)'}"
+                                                           VerticalAlignment="Center" FontWeight="SemiBold" />
+                                                <Slider Width="200" HorizontalAlignment="Right"
+                                                        Minimum="16" Maximum="38"
+                                                        Value="{Binding Settings.LyricsFontSize, Mode=TwoWay}" />
+                                            </Grid>
+                                            <CheckBox Content="Usar paleta escura dedicada no painel de letras"
+                                                      IsChecked="{Binding Settings.UseDarkPaletteOnLyricsSheet, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 3. Music Scanner Settings -->
+                                    <TextBlock Text="PASTAS E ESCANEAMENTO DE MÚSICAS" FontSize="11.5" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryBrush}" Margin="4,0,0,8" />
+
+                                    <Border Background="{DynamicResource SurfaceContainerLowBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}" BorderThickness="1"
+                                            CornerRadius="18" Padding="18" Margin="0,0,0,18">
+                                        <StackPanel>
+                                            <CheckBox Content="Incluir pasta 'Músicas' padrão do Windows"
+                                                      IsChecked="{Binding Settings.ScanMusicFolder, Mode=TwoWay}" />
+                                            <CheckBox Content="Ignorar faixas muito curtas (&lt; 30 segundos)"
+                                                      IsChecked="{Binding Settings.IgnoreShortTracks, Mode=TwoWay}" />
+                                            <CheckBox Content="Escanear biblioteca automaticamente ao iniciar"
+                                                      IsChecked="{Binding Settings.ScanOnAppLaunch, Mode=TwoWay}"
+                                                      Margin="0,0,0,10" />
+
+                                            <TextBlock Text="Pastas Extras Monitoradas:" FontWeight="SemiBold" Margin="0,4,0,6" />
+                                            <ListBox x:Name="ExtraFoldersListBox" Height="90"
+                                                     Background="{DynamicResource SurfaceContainerHighBrush}"
+                                                     Foreground="{DynamicResource OnSurfaceBrush}"
+                                                     BorderThickness="0" Margin="0,0,0,10" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Style="{StaticResource TonalButtonStyle}"
+                                                        Click="AddScanFolder_Click" Margin="0,0,8,0">
+                                                    <TextBlock Text="+ Adicionar Pasta" />
+                                                </Button>
+                                                <Button Style="{StaticResource TonalButtonStyle}"
+                                                        Click="RemoveSelectedScanFolder_Click">
+                                                    <TextBlock Text="Remover Selecionada" />
+                                                </Button>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 4. About Lotus -->
+                                    <TextBlock Text="SOBRE O LOTUS" FontSize="11.5" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryBrush}" Margin="4,0,0,8" />
+                                    <Border Background="{DynamicResource SurfaceContainerLowBrush}"
+                                            BorderBrush="{DynamicResource OutlineVariantBrush}" BorderThickness="1"
+                                            CornerRadius="18" Padding="18">
+                                        <StackPanel>
+                                            <TextBlock Text="Lotus Music Player — Windows Edition (v1.2.1)" FontWeight="Bold" FontSize="14" />
+                                            <TextBlock Text="Baseado no Lotus Music Player por dn0ne • Licenciado sob GPLv3."
+                                                       FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,4,0,0" />
+                                            <TextBlock Text="Integrações: LRCLIB (Letras Sincronizadas), MusicBrainz &amp; Cover Art Archive, NAudio, TagLibSharp."
+                                                       FontSize="12" Foreground="{DynamicResource OnSurfaceVariantBrush}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                                <Button Style="{StaticResource FilledButtonStyle}" Click="CloseSettings_Click">
+                                    <TextBlock Text="Concluído" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- ==================== 6. FLOATING SNACKBAR NOTIFICATION ==================== -->
+                <Border Grid.Row="1"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,20"
+                        Background="{DynamicResource PrimaryContainerBrush}"
+                        BorderBrush="{DynamicResource PrimaryBrush}"
+                        BorderThickness="1"
+                        CornerRadius="18"
+                        Padding="22,11"
+                        Visibility="{Binding HasSnackbar, Converter={StaticResource BoolToVis}}"
+                        IsHitTestVisible="False">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.4" Color="Black" />
+                    </Border.Effect>
+                    <TextBlock Text="{Binding SnackbarMessage}"
+                               Foreground="{DynamicResource OnPrimaryContainerBrush}"
+                               FontWeight="SemiBold"
+                               FontSize="13.5" />
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
