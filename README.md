@@ -3,7 +3,7 @@
 
   # Lotus+
 
-  ### Music player for Android and Windows
+  ### Music player for Android
   
 </div>
 
@@ -44,7 +44,6 @@
 - Share single or multiple tracks directly from the player or library
 - Manually update track details or fetch accurate info from [MusicBrainz](https://musicbrainz.org/)
 - Designed with [Material You](https://m3.material.io/) and supports dynamic color palettes
-- Companion Windows desktop app available under `windows/Lotus.Windows`
 
 ## Download
 Latest releases are available on [GitHub releases](https://github.com/FernandoNino38/Lotus-Plus/releases/latest)
